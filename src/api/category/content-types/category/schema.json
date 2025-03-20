@@ -17,20 +17,14 @@
     "slug": {
       "type": "uid"
     },
-    "books": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::book.book",
-      "mappedBy": "categories"
+    "KhmerName": {
+      "type": "string"
     },
     "resources": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::resource.resource",
-      "mappedBy": "book_categories"
-    },
-    "KhmerName": {
-      "type": "string"
+      "mappedBy": "categories"
     }
   }
 }

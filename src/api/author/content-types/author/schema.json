@@ -13,12 +13,6 @@
     "Name": {
       "type": "string"
     },
-    "books": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::book.book",
-      "inversedBy": "authors"
-    },
     "resources": {
       "type": "relation",
       "relation": "manyToMany",

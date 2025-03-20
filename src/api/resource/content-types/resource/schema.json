@@ -57,11 +57,11 @@
       "type": "boolean",
       "default": false
     },
-    "resources_types": {
+    "type": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::resources-type.resources-type",
-      "mappedBy": "resources"
+      "inversedBy": "resources"
     },
     "authors": {
       "type": "relation",
@@ -69,7 +69,7 @@
       "target": "api::author.author",
       "inversedBy": "resources"
     },
-    "book_categories": {
+    "categories": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::category.category",
@@ -80,6 +80,12 @@
       "relation": "manyToMany",
       "target": "api::publisher.publisher",
       "inversedBy": "resources"
+    },
+    "VideoLink": {
+      "type": "string"
+    },
+    "ExternalLink": {
+      "type": "string"
     }
   }
 }

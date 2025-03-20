@@ -380,7 +380,6 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    books: Schema.Attribute.Relation<'manyToMany', 'api::book.book'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -402,51 +401,6 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiBookBook extends Struct.CollectionTypeSchema {
-  collectionName: 'books';
-  info: {
-    description: '';
-    displayName: 'Book';
-    pluralName: 'books';
-    singularName: 'book';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  attributes: {
-    AudioBookLink: Schema.Attribute.String;
-    authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
-    categories: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::category.category'
-    >;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    eBook: Schema.Attribute.Media<'files'>;
-    EnglishDescription: Schema.Attribute.Text;
-    EnglishTitle: Schema.Attribute.String;
-    FeaturedImage: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
-    IsFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    KhmerDescription: Schema.Attribute.Text;
-    KhmerTitle: Schema.Attribute.String;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::book.book'> &
-      Schema.Attribute.Private;
-    publishedAt: Schema.Attribute.DateTime;
-    PublishedDate: Schema.Attribute.Date;
-    publishers: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::publisher.publisher'
-    >;
-    PurchaseLink: Schema.Attribute.String;
-    slug: Schema.Attribute.UID<'EnglishTitle'>;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -459,7 +413,6 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    books: Schema.Attribute.Relation<'manyToMany', 'api::book.book'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -495,7 +448,6 @@ export interface ApiPublisherPublisher extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    books: Schema.Attribute.Relation<'manyToMany', 'api::book.book'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -514,6 +466,7 @@ export interface ApiPublisherPublisher extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::resource.resource'
     >;
+    slug: Schema.Attribute.UID<'EnglishName'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -534,7 +487,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
   attributes: {
     AudioBookLink: Schema.Attribute.String;
     authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
-    book_categories: Schema.Attribute.Relation<
+    categories: Schema.Attribute.Relation<
       'manyToMany',
       'api::category.category'
     >;
@@ -544,6 +497,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     eBook: Schema.Attribute.Media<'files'>;
     EnglishDescription: Schema.Attribute.Text;
     EnglishTitle: Schema.Attribute.String;
+    ExternalLink: Schema.Attribute.String;
     FeaturedImage: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
     IsFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     KhmerDescription: Schema.Attribute.Text;
@@ -561,14 +515,15 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       'api::publisher.publisher'
     >;
     PurchaseLink: Schema.Attribute.String;
-    resources_types: Schema.Attribute.Relation<
+    slug: Schema.Attribute.UID<'EnglishTitle'>;
+    type: Schema.Attribute.Relation<
       'manyToMany',
       'api::resources-type.resources-type'
     >;
-    slug: Schema.Attribute.UID<'EnglishTitle'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    VideoLink: Schema.Attribute.String;
   };
 }
 
@@ -1119,7 +1074,6 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::author.author': ApiAuthorAuthor;
-      'api::book.book': ApiBookBook;
       'api::category.category': ApiCategoryCategory;
       'api::publisher.publisher': ApiPublisherPublisher;
       'api::resource.resource': ApiResourceResource;

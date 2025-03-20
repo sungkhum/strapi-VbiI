@@ -20,12 +20,6 @@
     "PhoneNumber": {
       "type": "string"
     },
-    "books": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::book.book",
-      "inversedBy": "publishers"
-    },
     "KhmerName": {
       "type": "string"
     },
@@ -34,6 +28,10 @@
       "relation": "manyToMany",
       "target": "api::resource.resource",
       "mappedBy": "publishers"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "EnglishName"
     }
   }
 }

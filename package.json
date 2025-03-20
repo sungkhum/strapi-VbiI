@@ -16,13 +16,13 @@
   },
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.11.3",
-    "@strapi/provider-upload-aws-s3": "^5.11.3",
     "@strapi/provider-upload-local": "5.11.3",
     "@strapi/strapi": "5.11.3",
     "pg": "8.8.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "strapi-provider-cloudflare-r2": "^0.3.0",
     "styled-components": "^6.1.16"
   },
   "engines": {

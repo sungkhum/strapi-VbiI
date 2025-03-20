@@ -1,0 +1,85 @@
+{
+  "kind": "collectionType",
+  "collectionName": "resources",
+  "info": {
+    "singularName": "resource",
+    "pluralName": "resources",
+    "displayName": "Resources",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "EnglishTitle": {
+      "type": "string"
+    },
+    "KhmerTitle": {
+      "type": "string"
+    },
+    "EnglishDescription": {
+      "type": "text"
+    },
+    "KhmerDescription": {
+      "type": "text"
+    },
+    "eBook": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "FeaturedImage": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "EnglishTitle"
+    },
+    "PurchaseLink": {
+      "type": "string"
+    },
+    "AudioBookLink": {
+      "type": "string"
+    },
+    "PublishedDate": {
+      "type": "date"
+    },
+    "IsFeatured": {
+      "type": "boolean",
+      "default": false
+    },
+    "resources_types": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::resources-type.resources-type",
+      "mappedBy": "resources"
+    },
+    "authors": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::author.author",
+      "inversedBy": "resources"
+    },
+    "book_categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "inversedBy": "resources"
+    },
+    "publishers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publisher.publisher",
+      "inversedBy": "resources"
+    }
+  }
+}

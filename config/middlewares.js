@@ -13,14 +13,14 @@ module.exports = [
             "data:",
             "blob:",
             "dl.airtable.com",
-            "cambodianchristianresourcesmedia .s3.ap-southeast-1.amazonaws.com", // change here
+            "cambodianchristianresourcesmedia.s3.ap-southeast-1.amazonaws.com", // change here
           ],
           "media-src": [
             "'self'",
             "data:",
             "blob:",
             "dl.airtable.com",
-            "cambodianchristianresourcesmedia .s3.ap-southeast-1.amazonaws.com", // change here
+            "cambodianchristianresourcesmedia.s3.ap-southeast-1.amazonaws.com", // change here
           ],
           upgradeInsecureRequests: null,
         },

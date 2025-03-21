@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "missionary_resources",
+  "info": {
+    "singularName": "missionary-resource",
+    "pluralName": "missionary-resources",
+    "displayName": "Missionary Resources",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Download": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "AudioLink": {
+      "type": "string"
+    },
+    "ExternalLink": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "Title"
+    },
+    "missionary_resource_categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::missionary-resource-category.missionary-resource-category",
+      "inversedBy": "missionary_resources"
+    }
+  }
+}

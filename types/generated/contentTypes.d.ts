@@ -438,6 +438,78 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMissionaryResourceCategoryMissionaryResourceCategory
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'missionary_resource_categories';
+  info: {
+    displayName: 'Missionary Resource Category';
+    pluralName: 'missionary-resource-categories';
+    singularName: 'missionary-resource-category';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::missionary-resource-category.missionary-resource-category'
+    > &
+      Schema.Attribute.Private;
+    missionary_resources: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::missionary-resource.missionary-resource'
+    >;
+    Name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'Name'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMissionaryResourceMissionaryResource
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'missionary_resources';
+  info: {
+    description: '';
+    displayName: 'Missionary Resources';
+    pluralName: 'missionary-resources';
+    singularName: 'missionary-resource';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    AudioLink: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    Download: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    ExternalLink: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::missionary-resource.missionary-resource'
+    > &
+      Schema.Attribute.Private;
+    missionary_resource_categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::missionary-resource-category.missionary-resource-category'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'Title'>;
+    Title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPublisherPublisher extends Struct.CollectionTypeSchema {
   collectionName: 'publishers';
   info: {
@@ -1077,6 +1149,8 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::author.author': ApiAuthorAuthor;
       'api::category.category': ApiCategoryCategory;
+      'api::missionary-resource-category.missionary-resource-category': ApiMissionaryResourceCategoryMissionaryResourceCategory;
+      'api::missionary-resource.missionary-resource': ApiMissionaryResourceMissionaryResource;
       'api::publisher.publisher': ApiPublisherPublisher;
       'api::resource.resource': ApiResourceResource;
       'api::resources-type.resources-type': ApiResourcesTypeResourcesType;

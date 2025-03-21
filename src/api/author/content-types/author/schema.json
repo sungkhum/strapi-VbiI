@@ -4,7 +4,8 @@
   "info": {
     "singularName": "author",
     "pluralName": "authors",
-    "displayName": "Author"
+    "displayName": "Author",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -18,6 +19,10 @@
       "relation": "manyToMany",
       "target": "api::resource.resource",
       "mappedBy": "authors"
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "Name"
     }
   }
 }

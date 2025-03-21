@@ -372,6 +372,7 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
 export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
   collectionName: 'authors';
   info: {
+    description: '';
     displayName: 'Author';
     pluralName: 'authors';
     singularName: 'author';
@@ -395,6 +396,7 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::resource.resource'
     >;
+    slug: Schema.Attribute.UID<'Name'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

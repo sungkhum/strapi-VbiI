@@ -498,9 +498,9 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     eBook: Schema.Attribute.Media<'files'>;
     EnglishDescription: Schema.Attribute.Text;
-    EnglishTitle: Schema.Attribute.String;
+    EnglishTitle: Schema.Attribute.String & Schema.Attribute.Required;
     ExternalLink: Schema.Attribute.String;
-    FeaturedImage: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    FeaturedImage: Schema.Attribute.Media<'images'>;
     IsFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     KhmerDescription: Schema.Attribute.Text;
     KhmerTitle: Schema.Attribute.String;
@@ -517,7 +517,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       'api::publisher.publisher'
     >;
     PurchaseLink: Schema.Attribute.String;
-    slug: Schema.Attribute.UID<'EnglishTitle'>;
+    slug: Schema.Attribute.UID<'EnglishTitle'> & Schema.Attribute.Required;
     type: Schema.Attribute.Relation<
       'manyToMany',
       'api::resources-type.resources-type'

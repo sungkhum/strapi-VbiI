@@ -33,7 +33,8 @@
     },
     "slug": {
       "type": "uid",
-      "targetField": "Title"
+      "targetField": "Title",
+      "required": true
     },
     "missionary_resource_categories": {
       "type": "relation",

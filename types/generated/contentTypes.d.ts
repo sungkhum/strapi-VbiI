@@ -486,9 +486,11 @@ export interface ApiMissionaryResourceMissionaryResource
   };
   attributes: {
     AudioLink: Schema.Attribute.String;
+    Author: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    Description: Schema.Attribute.Text;
     Download: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     ExternalLink: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;

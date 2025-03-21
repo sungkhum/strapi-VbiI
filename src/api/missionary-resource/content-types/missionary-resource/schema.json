@@ -40,6 +40,12 @@
       "relation": "manyToMany",
       "target": "api::missionary-resource-category.missionary-resource-category",
       "inversedBy": "missionary_resources"
+    },
+    "Author": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "text"
     }
   }
 }

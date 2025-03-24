@@ -486,13 +486,16 @@ export interface ApiMissionaryResourceMissionaryResource
   };
   attributes: {
     AudioLink: Schema.Attribute.String;
+    AudioLinkClick: Schema.Attribute.Integer;
     Author: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     Description: Schema.Attribute.Text;
     Download: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    DownloadClick: Schema.Attribute.Integer;
     ExternalLink: Schema.Attribute.String;
+    ExternalLinkClick: Schema.Attribute.Integer;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -504,7 +507,7 @@ export interface ApiMissionaryResourceMissionaryResource
       'api::missionary-resource-category.missionary-resource-category'
     >;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.UID<'Title'>;
+    slug: Schema.Attribute.UID<'Title'> & Schema.Attribute.Required;
     Title: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -561,6 +564,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    AudioBookDownloads: Schema.Attribute.Integer;
     AudioBookLink: Schema.Attribute.String;
     authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
     categories: Schema.Attribute.Relation<
@@ -571,9 +575,11 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     eBook: Schema.Attribute.Media<'files'>;
+    eBookDownloads: Schema.Attribute.Integer;
     EnglishDescription: Schema.Attribute.Text;
     EnglishTitle: Schema.Attribute.String & Schema.Attribute.Required;
     ExternalLink: Schema.Attribute.String;
+    ExternalLinkClicks: Schema.Attribute.Integer;
     FeaturedImage: Schema.Attribute.Media<'images'>;
     IsFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     KhmerDescription: Schema.Attribute.Text;
@@ -591,6 +597,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       'api::publisher.publisher'
     >;
     PurchaseLink: Schema.Attribute.String;
+    PurchaseLinkClick: Schema.Attribute.Integer;
     slug: Schema.Attribute.UID<'EnglishTitle'> & Schema.Attribute.Required;
     type: Schema.Attribute.Relation<
       'manyToMany',
@@ -599,6 +606,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    VideoClicks: Schema.Attribute.Integer;
     VideoLink: Schema.Attribute.String;
   };
 }

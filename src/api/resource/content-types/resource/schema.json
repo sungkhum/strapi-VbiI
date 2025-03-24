@@ -88,6 +88,21 @@
     },
     "ExternalLink": {
       "type": "string"
+    },
+    "eBookDownloads": {
+      "type": "integer"
+    },
+    "AudioBookDownloads": {
+      "type": "integer"
+    },
+    "VideoClicks": {
+      "type": "integer"
+    },
+    "ExternalLinkClicks": {
+      "type": "integer"
+    },
+    "PurchaseLinkClick": {
+      "type": "integer"
     }
   }
 }

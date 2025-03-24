@@ -47,6 +47,15 @@
     },
     "Description": {
       "type": "text"
+    },
+    "DownloadClick": {
+      "type": "integer"
+    },
+    "AudioLinkClick": {
+      "type": "integer"
+    },
+    "ExternalLinkClick": {
+      "type": "integer"
     }
   }
 }

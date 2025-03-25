@@ -90,19 +90,24 @@
       "type": "string"
     },
     "eBookDownloads": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "AudioBookDownloads": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "VideoClicks": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "ExternalLinkClicks": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "PurchaseLinkClick": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     }
   }
 }

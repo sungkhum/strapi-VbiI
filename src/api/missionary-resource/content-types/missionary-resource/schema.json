@@ -49,13 +49,16 @@
       "type": "text"
     },
     "DownloadClick": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "AudioLinkClick": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     },
     "ExternalLinkClick": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
     }
   }
 }

@@ -111,6 +111,10 @@
     },
     "VideoLessons": {
       "type": "string"
+    },
+    "VideoLessonsClicks": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

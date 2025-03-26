@@ -610,6 +610,8 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     VideoClicks: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     VideoLessons: Schema.Attribute.String;
+    VideoLessonsClicks: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     VideoLink: Schema.Attribute.String;
   };
 }

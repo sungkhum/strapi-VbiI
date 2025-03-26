@@ -108,6 +108,9 @@
     "PurchaseLinkClick": {
       "type": "integer",
       "default": 0
+    },
+    "VideoLessons": {
+      "type": "string"
     }
   }
 }

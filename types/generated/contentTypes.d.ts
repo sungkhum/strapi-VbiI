@@ -609,6 +609,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     VideoClicks: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    VideoLessons: Schema.Attribute.String;
     VideoLink: Schema.Attribute.String;
   };
 }

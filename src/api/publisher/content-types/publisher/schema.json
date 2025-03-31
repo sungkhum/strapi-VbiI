@@ -32,6 +32,9 @@
     "slug": {
       "type": "uid",
       "targetField": "EnglishName"
+    },
+    "Website": {
+      "type": "string"
     }
   }
 }

@@ -68,67 +68,116 @@ module.exports = {
         const searchTerms = search.split(/[\s\u200B]+/).filter(term => term.length > 0);
         console.log('Search terms after splitting:', searchTerms);
         
-        if (searchTerms.length === 0) {
-          return {
-            data: [],
-            meta: {
-              pagination: {
-                page,
-                pageSize,
-                pageCount: 0,
-                total: 0
-              }
-            }
-          };
-        }
-        
-        // Build query conditions for each term using ? placeholders
-        // Each term must appear in either the title or description (AND logic across terms)
-        let queryConditions = searchTerms.map(() => {
-          return `(normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
-                  OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?))`;
-        }).join(' AND ');
-        
-        // Create parameters array: one pair per term, wrapped in %
-        let searchParams = [];
-        searchTerms.forEach(term => {
-          searchParams.push(`%${term}%`);
-          searchParams.push(`%${term}%`);
-        });
-        
-        // Append pagination parameters
-        searchParams.push(pageSize);
-        searchParams.push(start);
-        
-        // Build SQL query using ? placeholders
-        const wordSqlQuery = `
-          SELECT id, document_id FROM "${tableName}"
-          WHERE ${queryConditions}
-          AND published_at IS NOT NULL
-          LIMIT ? OFFSET ?
-        `;
-        
-        console.log('Word-by-word SQL Query:', wordSqlQuery);
-        console.log('SQL Params:', searchParams);
-        
-        const wordResults = await knex.raw(wordSqlQuery, searchParams);
-        documentIds = wordResults.rows.map(row => row.document_id);
-        
-        if (documentIds.length > 0) {
-          // Remove pagination parameters for count query
-          let countParams = searchParams.slice(0, -2);
-          const countQuery = `
-            SELECT COUNT(*) FROM "${tableName}" 
+        if (searchTerms.length > 0) {
+          // Build query conditions for each term using ? placeholders.
+          // Each term must appear in either the title or description (AND logic across terms)
+          let queryConditions = searchTerms.map(() => {
+            return `(normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
+                    OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?))`;
+          }).join(' AND ');
+          
+          // Create parameters array: one pair per term, wrapped in %
+          let searchParams = [];
+          searchTerms.forEach(term => {
+            searchParams.push(`%${term}%`);
+            searchParams.push(`%${term}%`);
+          });
+          
+          // Append pagination parameters
+          searchParams.push(pageSize);
+          searchParams.push(start);
+          
+          // Build SQL query using ? placeholders
+          const wordSqlQuery = `
+            SELECT id, document_id FROM "${tableName}"
             WHERE ${queryConditions}
             AND published_at IS NOT NULL
+            LIMIT ? OFFSET ?
           `;
           
-          const countResult = await knex.raw(countQuery, countParams);
-          total = parseInt(countResult.rows[0].count);
+          console.log('Word-by-word SQL Query:', wordSqlQuery);
+          console.log('SQL Params:', searchParams);
+          
+          const wordResults = await knex.raw(wordSqlQuery, searchParams);
+          documentIds = wordResults.rows.map(row => row.document_id);
+          
+          if (documentIds.length > 0) {
+            // Remove pagination parameters for count query
+            let countParams = searchParams.slice(0, -2);
+            const countQuery = `
+              SELECT COUNT(*) FROM "${tableName}" 
+              WHERE ${queryConditions}
+              AND published_at IS NOT NULL
+            `;
+            
+            const countResult = await knex.raw(countQuery, countParams);
+            total = parseInt(countResult.rows[0].count);
+          }
         }
       }
       
-      // If no results from either search approach, return empty data
+      // Third attempt: if no results found by previous methods, try auto-segmentation as a last resort
+      if (documentIds.length === 0) {
+        console.log('No results found with phrase or word-by-word search. Trying auto-segmentation as a last resort.');
+        
+        // Attempt to auto-segment the search input using Intl.Segmenter (if supported)
+        let segmentedTerms = [];
+        try {
+          const segmenter = new Intl.Segmenter('km', { granularity: 'word' });
+          segmentedTerms = Array.from(segmenter.segment(search))
+            .map(segment => segment.segment)
+            .filter(Boolean);
+          console.log('Auto-segmented terms:', segmentedTerms);
+        } catch (err) {
+          console.error('Intl.Segmenter is not available or failed. Consider a fallback segmentation library.', err);
+        }
+        
+        if (segmentedTerms.length > 0) {
+          // Build query conditions for each segmented term
+          let queryConditions = segmentedTerms.map(() => {
+            return `(normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
+                    OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?))`;
+          }).join(' AND ');
+          
+          // Create parameters array: one pair per segmented term, wrapped in %
+          let searchParams = [];
+          segmentedTerms.forEach(term => {
+            searchParams.push(`%${term}%`);
+            searchParams.push(`%${term}%`);
+          });
+          
+          // Append pagination parameters
+          searchParams.push(pageSize);
+          searchParams.push(start);
+          
+          // Build the SQL query using the segmented tokens
+          const segmentedSqlQuery = `
+            SELECT id, document_id FROM "${tableName}"
+            WHERE ${queryConditions}
+            AND published_at IS NOT NULL
+            LIMIT ? OFFSET ?
+          `;
+          console.log('Segmented SQL Query:', segmentedSqlQuery);
+          console.log('SQL Params:', searchParams);
+          
+          const segmentedResults = await knex.raw(segmentedSqlQuery, searchParams);
+          documentIds = segmentedResults.rows.map(row => row.document_id);
+          
+          if (documentIds.length > 0) {
+            // Remove pagination parameters for count query
+            let countParams = searchParams.slice(0, -2);
+            const countQuery = `
+              SELECT COUNT(*) FROM "${tableName}" 
+              WHERE ${queryConditions}
+              AND published_at IS NOT NULL
+            `;
+            const countResult = await knex.raw(countQuery, countParams);
+            total = parseInt(countResult.rows[0].count);
+          }
+        }
+      }
+      
+      // If no results from any search approach, return empty data
       if (documentIds.length === 0) {
         return {
           data: [],

@@ -5,7 +5,8 @@ module.exports = {
         path: '/resources/khmer-search',
         handler: 'custom-search.khmerSearch',
         config: {
-          auth: false, // Set to true if authentication is required
+          auth: false,
+          policies: [],
         },
       },
     ],

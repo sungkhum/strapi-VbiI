@@ -10,7 +10,7 @@ module.exports = {
         return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
       }
       
-      // Get database connection 
+      // Get database connection
       const knex = strapi.db.connection;
       
       // Use the collectionName from your schema
@@ -30,7 +30,6 @@ module.exports = {
       } else if (publishState === 'draft') {
         publishedCondition = 'AND published_at IS NULL';
       }
-      // If publishState is 'all', no additional condition needed
       
       // Search only in KhmerTitle and KhmerDescription fields
       const searchFields = ['khmer_title', 'khmer_description']; 
@@ -59,24 +58,45 @@ module.exports = {
         [...searchParams, pageSize, start]
       );
       
-      // Format results exactly like Strapi v5
+      // Format results exactly like Strapi's standard response
       return {
         data: results.rows.map(item => {
-          // Convert snake_case back to camelCase for attributes
-          const attributes = {};
+          // Create a flat object with PascalCase keys directly in data items
+          const formattedItem = {
+            id: item.id,
+            documentId: item.document_id || '',
+          };
+          
+          // Convert snake_case to PascalCase for main attributes
+          // And directly add them to the top level (not in attributes)
           Object.entries(item).forEach(([key, value]) => {
-            if (key !== 'id') {
-              // Convert snake_case to camelCase
-              const camelKey = key.replace(/_([a-z])/g, (match, p1) => p1.toUpperCase());
-              attributes[camelKey] = value;
+            if (key !== 'id' && key !== 'document_id') {
+              // Handle special cases for created_at, updated_at, published_at
+              if (key === 'created_at') {
+                formattedItem.createdAt = value;
+              } else if (key === 'updated_at') {
+                formattedItem.updatedAt = value;
+              } else if (key === 'published_at') {
+                formattedItem.publishedAt = value;
+              } else {
+                // Convert snake_case to PascalCase
+                // First character uppercase followed by camelCase
+                const pascalKey = key
+                  .split('_')
+                  .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                  .join('');
+                formattedItem[pascalKey] = value;
+              }
             }
           });
           
-          return {
-            id: item.id,
-            documentId: item.document_id || '', 
-            attributes
-          };
+          // Filter out fields that don't appear in the regular response
+          const fieldsToExclude = ['createdById', 'updatedById', 'locale'];
+          fieldsToExclude.forEach(field => {
+            delete formattedItem[field];
+          });
+          
+          return formattedItem;
         }),
         meta: {
           pagination: {

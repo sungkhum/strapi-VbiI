@@ -9,6 +9,8 @@ module.exports = {
       if (!search) {
         return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
       }
+
+      console.log('Searching for Khmer text:', search);
       
       // Get database connection
       const knex = strapi.db.connection;
@@ -21,48 +23,27 @@ module.exports = {
       const pageSize = parseInt(ctx.query.pageSize) || 25;
       const start = (page - 1) * pageSize;
       
-      // Check if we should include drafts (default: only published)
-      const publishState = ctx.query.publicationState || 'published';
-      let publishedCondition = '';
+      // Search query with normalize_khmer_search function
+      const sqlQuery = `
+        SELECT id, document_id FROM "${tableName}"
+        WHERE (
+          normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
+          OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?)
+        )
+        AND published_at IS NOT NULL
+        LIMIT ? OFFSET ?
+      `;
       
-      if (publishState === 'published') {
-        publishedCondition = 'AND published_at IS NOT NULL';
-      } else if (publishState === 'draft') {
-        publishedCondition = 'AND published_at IS NULL';
-      }
-      
-      // Search only in KhmerTitle and KhmerDescription fields
-      const searchFields = ['khmer_title', 'khmer_description']; 
-      
-      // Build query conditions using the normalize_khmer_search function
-      const queryConditions = searchFields.map(field => 
-        `normalize_khmer_search("${field}") ILIKE normalize_khmer_search(?)`
-      ).join(' OR ');
-      
-      // Create array of search parameters (one for each field)
-      const searchParams = searchFields.map(() => `%${search}%`);
-      
-      // Count total matching records
-      const countResult = await knex.raw(
-        `SELECT COUNT(*) FROM "${tableName}" 
-         WHERE (${queryConditions}) ${publishedCondition}`,
-        searchParams
-      );
-      const total = parseInt(countResult.rows[0].count);
-      
-      // Execute the search query with pagination to get IDs only
-      const resultsQuery = await knex.raw(
-        `SELECT id FROM "${tableName}" 
-         WHERE (${queryConditions}) ${publishedCondition}
-         LIMIT ? OFFSET ?`,
-        [...searchParams, pageSize, start]
+      // Execute the search query to get both ID and documentId
+      const results = await knex.raw(
+        sqlQuery,
+        [`%${search}%`, `%${search}%`, pageSize, start]
       );
       
-      // Get the IDs from the raw query results
-      const ids = resultsQuery.rows.map(row => row.id);
+      const documentIds = results.rows.map(row => row.document_id);
+      console.log('Found resource documentIds:', documentIds);
       
-      // If no results, return empty data
-      if (ids.length === 0) {
+      if (documentIds.length === 0) {
         return {
           data: [],
           meta: {
@@ -76,58 +57,43 @@ module.exports = {
         };
       }
       
-      // Use Strapi's entity service to fetch full data with populated relations
+      // Count total matching records
+      const countResult = await knex.raw(
+        `SELECT COUNT(*) FROM "${tableName}" 
+         WHERE (
+           normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
+           OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?)
+         )
+         AND published_at IS NOT NULL`,
+        [`%${search}%`, `%${search}%`]
+      );
+      const total = parseInt(countResult.rows[0].count);
+      
+      // Use Strapi's entity service with documentId to get the complete data
       const fullResults = await strapi.entityService.findMany('api::resource.resource', {
         filters: {
-          id: {
-            $in: ids
+          documentId: {
+            $in: documentIds
           }
         },
-        populate: {
-          FeaturedImage: true,
-          eBook: true,
-          type: true,
-          authors: true,
-          publishers: true,
-          categories: true
-        }
+        publicationState: 'published', // Explicitly request published items
+        populate: '*'  // Populate all relationships
       });
       
-      // Format results to match Strapi's standard response format
-      // Keep PascalCase for field names to match your front-end expectations
+      console.log('Fetched full resources:', fullResults.length);
+      
+      // In case there's any mismatch between SQL results and entity service results,
+      // make sure we keep them in the original order
+      const orderedResults = [];
+      for (const docId of documentIds) {
+        const matchingResource = fullResults.find(r => r.documentId === docId);
+        if (matchingResource) {
+          orderedResults.push(matchingResource);
+        }
+      }
+      
       return {
-        data: fullResults.map(item => ({
-          id: item.id,
-          documentId: item.documentId || '',
-          EnglishTitle: item.EnglishTitle,
-          KhmerTitle: item.KhmerTitle,
-          EnglishDescription: item.EnglishDescription,
-          KhmerDescription: item.KhmerDescription,
-          slug: item.slug,
-          PurchaseLink: item.PurchaseLink,
-          AudioBookLink: item.AudioBookLink,
-          PublishedDate: item.PublishedDate,
-          IsFeatured: item.IsFeatured,
-          FeaturedImage: item.FeaturedImage,
-          eBook: item.eBook,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-          publishedAt: item.publishedAt,
-          VideoLink: item.VideoLink,
-          ExternalLink: item.ExternalLink,
-          eBookDownloads: item.eBookDownloads,
-          AudioBookDownloads: item.AudioBookDownloads,
-          VideoClicks: item.VideoClicks,
-          ExternalLinkClicks: item.ExternalLinkClicks,
-          PurchaseLinkClick: item.PurchaseLinkClick,
-          VideoLessons: item.VideoLessons,
-          VideoLessonsClicks: item.VideoLessonsClicks,
-          // Include the populated relations
-          type: item.type,
-          authors: item.authors,
-          publishers: item.publishers,
-          categories: item.categories
-        })),
+        data: orderedResults,
         meta: {
           pagination: {
             page,

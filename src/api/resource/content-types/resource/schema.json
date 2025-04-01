@@ -122,11 +122,11 @@
     "EnglishPurchaseLink": {
       "type": "string"
     },
-    "EnglishKindleLinkClick": {
+    "EnglishKindleClicks": {
       "type": "integer",
       "default": 0
     },
-    "EnglishPurchaseLinkClick": {
+    "EnglishPurchaseClicks": {
       "type": "integer",
       "default": 0
     }

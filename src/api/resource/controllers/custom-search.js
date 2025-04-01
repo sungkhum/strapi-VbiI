@@ -10,7 +10,7 @@ module.exports = {
         return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
       }
       
-      // Get database connection
+      // Get database connection 
       const knex = strapi.db.connection;
       
       // Use the collectionName from your schema

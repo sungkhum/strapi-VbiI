@@ -82,11 +82,58 @@ module.exports = {
       
       console.log('Fetched full resources:', fullResults.length);
       
-      // In case there's any mismatch between SQL results and entity service results,
-      // make sure we keep them in the original order
+      // Helper function to sanitize user objects
+      const sanitizeUser = (user) => {
+        if (!user) return null;
+        
+        // Only return safe fields
+        return {
+          id: user.id,
+          firstname: user.firstname,
+          lastname: user.lastname
+        };
+      };
+      
+      // Helper function to recursively sanitize all data
+      const sanitizeData = (data) => {
+        if (!data) return null;
+        
+        if (Array.isArray(data)) {
+          return data.map(item => sanitizeData(item));
+        }
+        
+        if (typeof data === 'object') {
+          const result = {};
+          
+          for (const [key, value] of Object.entries(data)) {
+            // Skip sensitive fields
+            if (['password', 'resetPasswordToken', 'registrationToken', 'email'].includes(key)) {
+              continue;
+            }
+            
+            // Specifically handle createdBy and updatedBy fields
+            if (key === 'createdBy' || key === 'updatedBy') {
+              result[key] = sanitizeUser(value);
+              continue;
+            }
+            
+            // Recursively sanitize nested objects
+            result[key] = sanitizeData(value);
+          }
+          
+          return result;
+        }
+        
+        return data;
+      };
+      
+      // Sanitize all results before returning
+      const sanitizedResults = sanitizeData(fullResults);
+      
+      // Ensure results are in the original order
       const orderedResults = [];
       for (const docId of documentIds) {
-        const matchingResource = fullResults.find(r => r.documentId === docId);
+        const matchingResource = sanitizedResults.find(r => r.documentId === docId);
         if (matchingResource) {
           orderedResults.push(matchingResource);
         }

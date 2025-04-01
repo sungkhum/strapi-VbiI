@@ -50,54 +50,84 @@ module.exports = {
       );
       const total = parseInt(countResult.rows[0].count);
       
-      // Execute the search query with pagination
-      const results = await knex.raw(
-        `SELECT * FROM "${tableName}" 
+      // Execute the search query with pagination to get IDs only
+      const resultsQuery = await knex.raw(
+        `SELECT id FROM "${tableName}" 
          WHERE (${queryConditions}) ${publishedCondition}
          LIMIT ? OFFSET ?`,
         [...searchParams, pageSize, start]
       );
       
-      // Format results exactly like Strapi's standard response
-      return {
-        data: results.rows.map(item => {
-          // Create a flat object with PascalCase keys directly in data items
-          const formattedItem = {
-            id: item.id,
-            documentId: item.document_id || '',
-          };
-          
-          // Convert snake_case to PascalCase for main attributes
-          // And directly add them to the top level (not in attributes)
-          Object.entries(item).forEach(([key, value]) => {
-            if (key !== 'id' && key !== 'document_id') {
-              // Handle special cases for created_at, updated_at, published_at
-              if (key === 'created_at') {
-                formattedItem.createdAt = value;
-              } else if (key === 'updated_at') {
-                formattedItem.updatedAt = value;
-              } else if (key === 'published_at') {
-                formattedItem.publishedAt = value;
-              } else {
-                // Convert snake_case to PascalCase
-                // First character uppercase followed by camelCase
-                const pascalKey = key
-                  .split('_')
-                  .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-                  .join('');
-                formattedItem[pascalKey] = value;
-              }
+      // Get the IDs from the raw query results
+      const ids = resultsQuery.rows.map(row => row.id);
+      
+      // If no results, return empty data
+      if (ids.length === 0) {
+        return {
+          data: [],
+          meta: {
+            pagination: {
+              page,
+              pageSize,
+              pageCount: 0,
+              total: 0
             }
-          });
-          
-          // Filter out fields that don't appear in the regular response
-          const fieldsToExclude = ['createdById', 'updatedById', 'locale'];
-          fieldsToExclude.forEach(field => {
-            delete formattedItem[field];
-          });
-          
-          return formattedItem;
-        }),
+          }
+        };
+      }
+      
+      // Use Strapi's entity service to fetch full data with populated relations
+      const fullResults = await strapi.entityService.findMany('api::resource.resource', {
+        filters: {
+          id: {
+            $in: ids
+          }
+        },
+        populate: {
+          FeaturedImage: true,
+          eBook: true,
+          type: true,
+          authors: true,
+          publishers: true,
+          categories: true
+        }
+      });
+      
+      // Format results to match Strapi's standard response format
+      // Keep PascalCase for field names to match your front-end expectations
+      return {
+        data: fullResults.map(item => ({
+          id: item.id,
+          documentId: item.documentId || '',
+          EnglishTitle: item.EnglishTitle,
+          KhmerTitle: item.KhmerTitle,
+          EnglishDescription: item.EnglishDescription,
+          KhmerDescription: item.KhmerDescription,
+          slug: item.slug,
+          PurchaseLink: item.PurchaseLink,
+          AudioBookLink: item.AudioBookLink,
+          PublishedDate: item.PublishedDate,
+          IsFeatured: item.IsFeatured,
+          FeaturedImage: item.FeaturedImage,
+          eBook: item.eBook,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          publishedAt: item.publishedAt,
+          VideoLink: item.VideoLink,
+          ExternalLink: item.ExternalLink,
+          eBookDownloads: item.eBookDownloads,
+          AudioBookDownloads: item.AudioBookDownloads,
+          VideoClicks: item.VideoClicks,
+          ExternalLinkClicks: item.ExternalLinkClicks,
+          PurchaseLinkClick: item.PurchaseLinkClick,
+          VideoLessons: item.VideoLessons,
+          VideoLessonsClicks: item.VideoLessonsClicks,
+          // Include the populated relations
+          type: item.type,
+          authors: item.authors,
+          publishers: item.publishers,
+          categories: item.categories
+        })),
         meta: {
           pagination: {
             page,

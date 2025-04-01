@@ -121,6 +121,14 @@
     },
     "EnglishPurchaseLink": {
       "type": "string"
+    },
+    "EnglishKindleLinkClick": {
+      "type": "integer",
+      "default": 0
+    },
+    "EnglishPurchaseLinkClick": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

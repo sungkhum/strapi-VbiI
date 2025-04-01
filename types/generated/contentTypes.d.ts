@@ -580,7 +580,11 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
     eBookDownloads: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     EnglishDescription: Schema.Attribute.Text;
     EnglishKindleLink: Schema.Attribute.String;
+    EnglishKindleLinkClick: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     EnglishPurchaseLink: Schema.Attribute.String;
+    EnglishPurchaseLinkClick: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     EnglishTitle: Schema.Attribute.String & Schema.Attribute.Required;
     ExternalLink: Schema.Attribute.String;
     ExternalLinkClicks: Schema.Attribute.Integer &

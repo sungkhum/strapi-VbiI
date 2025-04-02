@@ -578,7 +578,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     eBook: Schema.Attribute.Media<'files'>;
     eBookDownloads: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
-    EnglishDescription: Schema.Attribute.Text;
+    EnglishDescription: Schema.Attribute.RichText;
     EnglishKindleClicks: Schema.Attribute.Integer &
       Schema.Attribute.DefaultTo<0>;
     EnglishKindleLink: Schema.Attribute.String;
@@ -591,7 +591,7 @@ export interface ApiResourceResource extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<0>;
     FeaturedImage: Schema.Attribute.Media<'images'>;
     IsFeatured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    KhmerDescription: Schema.Attribute.Text;
+    KhmerDescription: Schema.Attribute.RichText;
     KhmerTitle: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<

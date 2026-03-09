@@ -1,5 +1,39 @@
 'use strict';
 
+// Instantiate once at module level instead of per-request
+const khmerSegmenter = (() => {
+  try {
+    return new Intl.Segmenter('km', { granularity: 'word' });
+  } catch (err) {
+    return null;
+  }
+})();
+
+// Simple in-memory cache with 60s TTL
+const searchCache = new Map();
+const CACHE_TTL = 60 * 1000;
+
+function getCached(key) {
+  const entry = searchCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    searchCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+function setCache(key, value) {
+  searchCache.set(key, { value, ts: Date.now() });
+  // Evict old entries if cache grows too large
+  if (searchCache.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of searchCache) {
+      if (now - v.ts > CACHE_TTL) searchCache.delete(k);
+    }
+  }
+}
+
 module.exports = {
   async khmerSearch(ctx) {
     try {
@@ -15,6 +49,11 @@ module.exports = {
       const page = parseInt(ctx.query.page) || 1;
       const pageSize = parseInt(ctx.query.pageSize) || 25;
       const start = (page - 1) * pageSize;
+
+      // Check cache first
+      const cacheKey = `${search}:${page}:${pageSize}`;
+      const cached = getCached(cacheKey);
+      if (cached) return cached;
 
       // Remove zero-width spaces for phrase search
       const searchNoZWS = search.replace(/\u200B/g, '');
@@ -94,13 +133,10 @@ module.exports = {
       // Third attempt: auto-segmentation using Intl.Segmenter for Khmer
       if (documentIds.length === 0) {
         let segmentedTerms = [];
-        try {
-          const segmenter = new Intl.Segmenter('km', { granularity: 'word' });
-          segmentedTerms = Array.from(segmenter.segment(search))
+        if (khmerSegmenter) {
+          segmentedTerms = Array.from(khmerSegmenter.segment(search))
             .map(segment => segment.segment)
             .filter(Boolean);
-        } catch (err) {
-          strapi.log.error('Intl.Segmenter failed for Khmer segmentation', err);
         }
 
         if (segmentedTerms.length > 0) {
@@ -142,7 +178,7 @@ module.exports = {
       }
 
       if (documentIds.length === 0) {
-        return {
+        const emptyResponse = {
           data: [],
           meta: {
             pagination: {
@@ -153,6 +189,8 @@ module.exports = {
             }
           }
         };
+        setCache(cacheKey, emptyResponse);
+        return emptyResponse;
       }
 
       // Use Strapi's Document Service API to get complete data
@@ -216,7 +254,7 @@ module.exports = {
         }
       }
 
-      return {
+      const response = {
         data: orderedResults,
         meta: {
           pagination: {
@@ -227,6 +265,9 @@ module.exports = {
           }
         }
       };
+
+      setCache(cacheKey, response);
+      return response;
     } catch (error) {
       strapi.log.error('Khmer search error:', error);
       ctx.throw(500, 'Error performing Khmer search');

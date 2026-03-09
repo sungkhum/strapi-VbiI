@@ -5,6 +5,6 @@ module.exports = ({ env }) => ({
             connectionString: env('DATABASE_URL')
         },
         debug: false,
-        pool: { min: 0, max: 7 },
+        pool: { min: 0, max: 4 },
     }
 });

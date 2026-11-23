@@ -12,7 +12,8 @@
     "start": "NODE_OPTIONS='--max-old-space-size=1024' strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@strapi/plugin-users-permissions": "5.11.3",

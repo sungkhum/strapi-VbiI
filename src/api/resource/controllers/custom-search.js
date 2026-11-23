@@ -1,276 +1,167 @@
 'use strict';
 
-// Instantiate once at module level instead of per-request
-const khmerSegmenter = (() => {
-  try {
-    return new Intl.Segmenter('km', { granularity: 'word' });
-  } catch (err) {
-    return null;
-  }
-})();
+const { buildIndex, search } = require('../../../utils/khmer-search');
 
-// Simple in-memory cache with 60s TTL
-const searchCache = new Map();
-const CACHE_TTL = 60 * 1000;
+/**
+ * Search for the CCR site, in Khmer and English. Every published resource's titles, author and
+ * publisher names and descriptions are indexed in memory (a few hundred resources) and ranked by
+ * `src/utils/khmer-search.js`; the site's type, category, featured and author filters and its sort
+ * options apply to the matches. Only the requested page is loaded in full.
+ */
 
-function getCached(key) {
-  const entry = searchCache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL) {
-    searchCache.delete(key);
-    return null;
-  }
-  return entry.value;
+const INDEX_TTL = 5 * 60 * 1000;
+const RESULT_TTL = 60 * 1000;
+let cachedIndex = null;
+const resultCache = new Map();
+
+async function loadIndex() {
+  const resources = await strapi.documents('api::resource.resource').findMany({
+    status: 'published',
+    fields: ['EnglishTitle', 'KhmerTitle', 'EnglishDescription', 'KhmerDescription', 'PublishedDate', 'IsFeatured'],
+    populate: {
+      type: { fields: ['slug'] },
+      categories: { fields: ['slug'] },
+      authors: { fields: ['Name'] },
+      publishers: { fields: ['EnglishName', 'KhmerName'] },
+    },
+    limit: 10000,
+  });
+  return buildIndex(resources, (resource) => [
+    { weight: 4, text: [resource.KhmerTitle, resource.EnglishTitle].filter(Boolean).join(' ') },
+    {
+      weight: 2,
+      text: [
+        ...(resource.authors || []).map((author) => author.Name),
+        ...(resource.publishers || []).flatMap((publisher) => [publisher.EnglishName, publisher.KhmerName]),
+      ].filter(Boolean).join(' '),
+    },
+    { weight: 1, text: [resource.KhmerDescription, resource.EnglishDescription].filter(Boolean).join(' ') },
+  ]);
 }
 
-function setCache(key, value) {
-  searchCache.set(key, { value, ts: Date.now() });
-  // Evict old entries if cache grows too large
-  if (searchCache.size > 200) {
-    const now = Date.now();
-    for (const [k, v] of searchCache) {
-      if (now - v.ts > CACHE_TTL) searchCache.delete(k);
+/** The search index, rebuilt at most every five minutes. A failed load is retried next time. */
+function resourceIndex() {
+  if (!cachedIndex || Date.now() - cachedIndex.at > INDEX_TTL) {
+    const promise = loadIndex();
+    cachedIndex = { at: Date.now(), promise };
+    promise.catch(() => {
+      if (cachedIndex && cachedIndex.promise === promise) cachedIndex = null;
+    });
+  }
+  return cachedIndex.promise;
+}
+
+const text = (value) => (typeof value === 'string' ? value : Array.isArray(value) ? String(value[0] ?? '') : '');
+const positive = (value, fallback, max) => {
+  const number = Number.parseInt(text(value), 10);
+  return Number.isFinite(number) && number > 0 ? Math.min(number, max) : fallback;
+};
+
+/** The filters the site sends alongside a search. */
+function matchesFilters(resource, { type, category, featured, author }) {
+  if (type && type !== 'all' && !(resource.type || []).some((entry) => entry.slug === type)) return false;
+  if (category && !(resource.categories || []).some((entry) => entry.slug === category)) return false;
+  if (featured === 'true' && resource.IsFeatured !== true) return false;
+  if (author && !(resource.authors || []).some((entry) => String(entry.id) === author)) return false;
+  return true;
+}
+
+/** Relevance by default; the site's explicit sort options when chosen. */
+function sorted(resources, sort) {
+  const byDate = (a, b) => String(a.PublishedDate || '').localeCompare(String(b.PublishedDate || ''));
+  const byTitle = (a, b) => String(a.EnglishTitle || '').localeCompare(String(b.EnglishTitle || ''));
+  if (sort === 'date-asc') return [...resources].sort(byDate);
+  if (sort === 'title-asc') return [...resources].sort(byTitle);
+  if (sort === 'title-desc') return [...resources].sort((a, b) => byTitle(b, a));
+  return resources;
+}
+
+// Helper function to sanitize user objects
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  return {
+    id: user.id,
+    firstname: user.firstname,
+    lastname: user.lastname
+  };
+};
+
+// Recursively sanitize sensitive fields from response data
+const sanitizeData = (data) => {
+  if (!data) return null;
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeData(item));
+  }
+  if (typeof data === 'object') {
+    const result = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (['password', 'resetPasswordToken', 'registrationToken', 'email'].includes(key)) {
+        continue;
+      }
+      if (key === 'createdBy' || key === 'updatedBy') {
+        result[key] = sanitizeUser(value);
+        continue;
+      }
+      result[key] = sanitizeData(value);
     }
+    return result;
   }
-}
+  return data;
+};
 
 module.exports = {
   async khmerSearch(ctx) {
     try {
-      const { search } = ctx.query;
-
-      if (!search) {
-        return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
-      }
-
-      const knex = strapi.db.connection;
-      const tableName = 'resources';
-
-      const page = parseInt(ctx.query.page) || 1;
-      const pageSize = parseInt(ctx.query.pageSize) || 25;
-      const start = (page - 1) * pageSize;
-
-      // Check cache first
-      const cacheKey = `${search}:${page}:${pageSize}`;
-      const cached = getCached(cacheKey);
-      if (cached) return cached;
-
-      // Remove zero-width spaces for phrase search
-      const searchNoZWS = search.replace(/\u200B/g, '');
-
-      const phraseSqlQuery = `
-        SELECT id, document_id FROM "${tableName}"
-        WHERE (
-          normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
-          OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?)
-        )
-        AND published_at IS NOT NULL
-        LIMIT ? OFFSET ?
-      `;
-
-      const phraseResults = await knex.raw(
-        phraseSqlQuery,
-        [`%${searchNoZWS}%`, `%${searchNoZWS}%`, pageSize, start]
-      );
-
-      let documentIds = phraseResults.rows.map(row => row.document_id);
-      let total = 0;
-
-      if (documentIds.length > 0) {
-        const countResult = await knex.raw(
-          `SELECT COUNT(*) FROM "${tableName}"
-           WHERE (
-             normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
-             OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?)
-           )
-           AND published_at IS NOT NULL`,
-          [`%${searchNoZWS}%`, `%${searchNoZWS}%`]
-        );
-        total = parseInt(countResult.rows[0].count);
-      } else {
-        // Treat zero-width spaces as word separators and search for each word
-        const searchTerms = search.split(/[\s\u200B]+/).filter(term => term.length > 0);
-
-        if (searchTerms.length > 0) {
-          let queryConditions = searchTerms.map(() => {
-            return `(normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
-                    OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?))`;
-          }).join(' AND ');
-
-          let searchParams = [];
-          searchTerms.forEach(term => {
-            searchParams.push(`%${term}%`);
-            searchParams.push(`%${term}%`);
-          });
-
-          searchParams.push(pageSize);
-          searchParams.push(start);
-
-          const wordSqlQuery = `
-            SELECT id, document_id FROM "${tableName}"
-            WHERE ${queryConditions}
-            AND published_at IS NOT NULL
-            LIMIT ? OFFSET ?
-          `;
-
-          const wordResults = await knex.raw(wordSqlQuery, searchParams);
-          documentIds = wordResults.rows.map(row => row.document_id);
-
-          if (documentIds.length > 0) {
-            let countParams = searchParams.slice(0, -2);
-            const countQuery = `
-              SELECT COUNT(*) FROM "${tableName}"
-              WHERE ${queryConditions}
-              AND published_at IS NOT NULL
-            `;
-
-            const countResult = await knex.raw(countQuery, countParams);
-            total = parseInt(countResult.rows[0].count);
-          }
-        }
-      }
-
-      // Third attempt: auto-segmentation using Intl.Segmenter for Khmer
-      if (documentIds.length === 0) {
-        let segmentedTerms = [];
-        if (khmerSegmenter) {
-          segmentedTerms = Array.from(khmerSegmenter.segment(search))
-            .map(segment => segment.segment)
-            .filter(Boolean);
-        }
-
-        if (segmentedTerms.length > 0) {
-          let queryConditions = segmentedTerms.map(() => {
-            return `(normalize_khmer_search(khmer_title) ILIKE normalize_khmer_search(?)
-                    OR normalize_khmer_search(khmer_description) ILIKE normalize_khmer_search(?))`;
-          }).join(' AND ');
-
-          let searchParams = [];
-          segmentedTerms.forEach(term => {
-            searchParams.push(`%${term}%`);
-            searchParams.push(`%${term}%`);
-          });
-
-          searchParams.push(pageSize);
-          searchParams.push(start);
-
-          const segmentedSqlQuery = `
-            SELECT id, document_id FROM "${tableName}"
-            WHERE ${queryConditions}
-            AND published_at IS NOT NULL
-            LIMIT ? OFFSET ?
-          `;
-
-          const segmentedResults = await knex.raw(segmentedSqlQuery, searchParams);
-          documentIds = segmentedResults.rows.map(row => row.document_id);
-
-          if (documentIds.length > 0) {
-            let countParams = searchParams.slice(0, -2);
-            const countQuery = `
-              SELECT COUNT(*) FROM "${tableName}"
-              WHERE ${queryConditions}
-              AND published_at IS NOT NULL
-            `;
-            const countResult = await knex.raw(countQuery, countParams);
-            total = parseInt(countResult.rows[0].count);
-          }
-        }
-      }
-
-      if (documentIds.length === 0) {
-        const emptyResponse = {
-          data: [],
-          meta: {
-            pagination: {
-              page,
-              pageSize,
-              pageCount: 0,
-              total: 0
-            }
-          }
-        };
-        setCache(cacheKey, emptyResponse);
-        return emptyResponse;
-      }
-
-      // Use Strapi's Document Service API to get complete data
-      const fullResults = await strapi.documents('api::resource.resource').findMany({
-        filters: {
-          documentId: {
-            $in: documentIds
-          }
-        },
-        status: 'published',
-        populate: {
-          FeaturedImage: true,
-          eBook: true,
-          authors: { fields: ['Name', 'slug'] },
-          categories: { fields: ['EnglishName', 'KhmerName', 'slug'] },
-          publishers: { fields: ['EnglishName', 'KhmerName', 'slug'] },
-          type: { fields: ['EnglishName', 'KhmerName', 'slug'] },
-        },
-      });
-
-      // Helper function to sanitize user objects
-      const sanitizeUser = (user) => {
-        if (!user) return null;
-        return {
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname
-        };
+      const query = text(ctx.query.search).trim();
+      const page = positive(ctx.query.page, 1, 10000);
+      const pageSize = positive(ctx.query.pageSize, 25, 100);
+      const filters = {
+        type: text(ctx.query.type),
+        category: text(ctx.query.category),
+        featured: text(ctx.query.featured),
+        author: text(ctx.query.author),
       };
+      const sort = text(ctx.query.sort);
 
-      // Recursively sanitize sensitive fields from response data
-      const sanitizeData = (data) => {
-        if (!data) return null;
-        if (Array.isArray(data)) {
-          return data.map(item => sanitizeData(item));
-        }
-        if (typeof data === 'object') {
-          const result = {};
-          for (const [key, value] of Object.entries(data)) {
-            if (['password', 'resetPasswordToken', 'registrationToken', 'email'].includes(key)) {
-              continue;
-            }
-            if (key === 'createdBy' || key === 'updatedBy') {
-              result[key] = sanitizeUser(value);
-              continue;
-            }
-            result[key] = sanitizeData(value);
-          }
-          return result;
-        }
-        return data;
-      };
-
-      // Sanitize and preserve the original order from the SQL query
-      const sanitizedResults = sanitizeData(fullResults);
-      const orderedResults = [];
-      for (const docId of documentIds) {
-        const matchingResource = sanitizedResults.find(r => r.documentId === docId);
-        if (matchingResource) {
-          orderedResults.push(matchingResource);
-        }
+      if (!query) {
+        return { data: [], meta: { pagination: { page: 1, pageSize, pageCount: 0, total: 0 } } };
       }
 
-      const response = {
-        data: orderedResults,
-        meta: {
-          pagination: {
-            page,
-            pageSize,
-            pageCount: Math.ceil(total / pageSize),
-            total
-          }
-        }
-      };
+      const cacheKey = JSON.stringify([query, page, pageSize, filters, sort]);
+      const cached = resultCache.get(cacheKey);
+      if (cached && Date.now() - cached.at < RESULT_TTL) return cached.value;
 
-      setCache(cacheKey, response);
+      const matches = sorted(search(await resourceIndex(), query).filter((resource) => matchesFilters(resource, filters)), sort);
+      const total = matches.length;
+      const documentIds = matches.slice((page - 1) * pageSize, page * pageSize).map((resource) => resource.documentId);
+
+      let data = [];
+      if (documentIds.length) {
+        const fullResults = await strapi.documents('api::resource.resource').findMany({
+          filters: { documentId: { $in: documentIds } },
+          status: 'published',
+          populate: {
+            FeaturedImage: true,
+            eBook: true,
+            authors: { fields: ['Name', 'slug'] },
+            categories: { fields: ['EnglishName', 'KhmerName', 'slug'] },
+            publishers: { fields: ['EnglishName', 'KhmerName', 'slug'] },
+            type: { fields: ['EnglishName', 'KhmerName', 'slug'] },
+          },
+        });
+        const byId = new Map(sanitizeData(fullResults).map((resource) => [resource.documentId, resource]));
+        data = documentIds.map((id) => byId.get(id)).filter(Boolean);
+      }
+
+      const response = { data, meta: { pagination: { page, pageSize, pageCount: Math.ceil(total / pageSize), total } } };
+      resultCache.set(cacheKey, { at: Date.now(), value: response });
+      if (resultCache.size > 200) {
+        for (const [key, entry] of resultCache) if (Date.now() - entry.at > RESULT_TTL) resultCache.delete(key);
+      }
       return response;
     } catch (error) {
-      strapi.log.error('Khmer search error:', error);
-      ctx.throw(500, 'Error performing Khmer search');
+      strapi.log.error('Search error:', error);
+      ctx.throw(500, 'Error performing search');
     }
-  }
+  },
 };

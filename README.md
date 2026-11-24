@@ -44,6 +44,14 @@ resource's lifetime `eBookDownloads` field (draft and published rows alike) and 
 count for the day in Cambodia (`ebook_download_days`). It does not publish the resource or fire
 webhooks. The first counted download is stored in `ebook_download_tracking`.
 
+The site's other tracked links (audio, video, purchase, Kindle, external, and missionary
+resources' download, audio and external links) are counted with
+`POST /api/analytics/link-clicks` and `{ "link": "audio", "documentId": "..." }`, with the same
+auth. It adds one to that entry's counter in place, on the draft and published rows. Only the
+link types listed in `src/api/analytics/utils/link-clicks.js` are accepted. Like the eBook
+counter, it does not publish the entry or fire webhooks, so a click no longer purges the site's
+Cloudflare cache.
+
 PlovPit Insights reads the counts with
 `GET /api/analytics/ebook-downloads?from=YYYY-MM-DD&to=YYYY-MM-DD` and
 `Authorization: Bearer <INSIGHTS_EXPORT_TOKEN>`. Set `INSIGHTS_EXPORT_TOKEN` on this service to a

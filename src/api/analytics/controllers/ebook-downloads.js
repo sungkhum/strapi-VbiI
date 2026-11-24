@@ -10,6 +10,7 @@ const {
   recordEbookDownload,
   tokenMatches,
 } = require('../utils/ebook-downloads');
+const { loadTotals } = require('../utils/totals');
 
 const WINDOW_MS = 60 * 1000;
 const EXPORTS_PER_WINDOW = 30;
@@ -97,7 +98,8 @@ module.exports = {
     }
 
     try {
-      ctx.body = await loadEbookDownloads(strapi.db.connection, range);
+      const knex = strapi.db.connection;
+      ctx.body = { ...(await loadEbookDownloads(knex, range)), ...(await loadTotals(knex)) };
     } catch (error) {
       strapi.log.error('eBook download export failed', error);
       return ctx.internalServerError('eBook download export failed');

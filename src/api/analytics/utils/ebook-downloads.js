@@ -116,9 +116,11 @@ const recordEbookDownload = async (knex, documentId, { now } = {}) => {
   });
 };
 
-/** The export for an inclusive range of Cambodia days. `now` is for tests. */
-const loadEbookDownloads = async (knex, range, { now } = {}) => {
-  const at = now ? new Date(now).toISOString() : null;
+/**
+ * Today in Cambodia, and the first full Cambodia day after counting began (null until the first
+ * download is counted). `at` is an ISO time for tests; the database clock is used otherwise.
+ */
+const loadCoverage = async (knex, at = null) => {
   const { rows: [clock] } = await knex.raw(
     `SELECT
        to_char((COALESCE(?::timestamptz, now()) AT TIME ZONE ?)::date, 'YYYY-MM-DD') AS today,
@@ -130,7 +132,12 @@ const loadEbookDownloads = async (knex, range, { now } = {}) => {
         FROM ebook_download_tracking WHERE id = 1) AS first_day`,
     [at, TIME_ZONE, TIME_ZONE, TIME_ZONE, TIME_ZONE]
   );
-  const coverage = { firstDay: clock.first_day, today: clock.today };
+  return { firstDay: clock.first_day, today: clock.today };
+};
+
+/** The export for an inclusive range of Cambodia days. `now` is for tests. */
+const loadEbookDownloads = async (knex, range, { now } = {}) => {
+  const coverage = await loadCoverage(knex, now ? new Date(now).toISOString() : null);
   const days = reportedDays(range, coverage);
   if (!days.length) return assembleExport(range, coverage, []);
 
@@ -177,7 +184,9 @@ module.exports = {
   assembleExport,
   bearerToken,
   exportToken,
+  TITLE_SQL,
   isDocumentId,
+  loadCoverage,
   loadEbookDownloads,
   parseRange,
   recordEbookDownload,

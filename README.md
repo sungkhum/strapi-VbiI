@@ -70,7 +70,25 @@ apart. It returns 400 for invalid dates, 401 for a wrong token and 429 when call
 ```
 
 Only complete days are listed: from the first full Cambodia day after counting began through
-yesterday. A listed day without downloads has an empty `books` list. Titles are the Khmer title,
+yesterday. A listed day without downloads has an empty `books` list.
+
+Every response also carries the running totals that have no dates, for Insights' "All time":
+
+```json
+{
+  "undated": {
+    "before": "2026-11-25",
+    "ebookDownloads": 144824,
+    "books": [{ "id": "<documentId>", "title": "<Khmer title>", "count": 13664 }]
+  },
+  "linkClicks": { "audio": 5223, "video": 1677, "purchase": 2651, "missionary_download": 0 }
+}
+```
+
+`undated` is each resource's lifetime `eBookDownloads` less the days from `before` (the first
+reported day) onwards, so the daily counts plus `undated` make up the whole lifetime. `before` is
+null until daily counting begins. `linkClicks` is each other link's lifetime counter, keyed like
+`/api/analytics/link-clicks`. Both count every resource once, published or not. Titles are the Khmer title,
 or the English title when there is none, as the PlovPit app and Shop use Khmer titles.
 
 Tests: `npm test`. The SQL tests need a Postgres database:

@@ -35,3 +35,35 @@ When developing locally this Strapi template will connect to the Postgres server
 
 - After your app is deployed, visit the `/admin` endpoint to create your admin user.
 - If you want to use npm with this project make sure you delete the `yarn.lock` file after you have ran `npm install`
+## eBook download counts
+
+The site's eBook redirect (`/api/track-click?type=ebook` in `ccr-frontend`) counts each download with
+`POST /api/analytics/ebook-downloads` and `{ "documentId": "..." }`. Strapi's own auth applies, so
+only the site's full-access API token can call it. One transaction adds the download to the
+resource's lifetime `eBookDownloads` field (draft and published rows alike) and to that resource's
+count for the day in Cambodia (`ebook_download_days`). It does not publish the resource or fire
+webhooks. The first counted download is stored in `ebook_download_tracking`.
+
+PlovPit Insights reads the counts with
+`GET /api/analytics/ebook-downloads?from=YYYY-MM-DD&to=YYYY-MM-DD` and
+`Authorization: Bearer <INSIGHTS_EXPORT_TOKEN>`. Set `INSIGHTS_EXPORT_TOKEN` on this service to a
+random value of at least 32 characters (`openssl rand -hex 32`). Without it the route answers 404,
+and no Strapi role or API token can open it. Both dates are required and inclusive, at most 31 days
+apart. It returns 400 for invalid dates, 401 for a wrong token and 429 when called too often.
+
+```json
+{
+  "timeZone": "Asia/Phnom_Penh",
+  "days": [
+    { "date": "2026-11-25", "books": [{ "id": "<documentId>", "title": "<Khmer title>", "count": 3 }] },
+    { "date": "2026-11-26", "books": [] }
+  ]
+}
+```
+
+Only complete days are listed: from the first full Cambodia day after counting began through
+yesterday. A listed day without downloads has an empty `books` list. Titles are the Khmer title,
+or the English title when there is none, as the PlovPit app and Shop use Khmer titles.
+
+Tests: `npm test`. The SQL tests need a Postgres database:
+`TEST_DATABASE_URL=postgres://... npm test` (each run uses and drops its own schema).
